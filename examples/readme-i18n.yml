@@ -1,0 +1,31 @@
+name: README i18n
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target language
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - en
+          - zh-CN
+          - ko
+          - fr
+
+permissions:
+  contents: read
+
+jobs:
+  translate:
+    uses: serevy/readme-i18n-kit/.github/workflows/translate-readme.yml@main
+    with:
+      source_file: README.md
+      source_language: ja
+      target: ${{ inputs.target }}
+      config_path: .readme-i18n/config.json
+      artifact_prefix: readme
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
