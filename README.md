@@ -66,11 +66,26 @@ The canonical source language must not also appear in this list.
 
 ### `protectedTerms`
 
-Literal terms that must remain byte-for-byte unchanged in every generated language. Each protected term is also supplied to the translator as an identity glossary entry.
+Literal identifiers whose **occurrence count must remain unchanged** between the canonical README and each generated translation. Each protected term is also supplied to the translator as an identity glossary entry.
 
-Use this for project names, record types, canonical technical terms, and other identifiers that should not be localized.
+Use this for names and identifiers that should neither change nor appear spontaneously, such as repository names, version strings, schema/status keys, and unique product names.
+
+Do **not** use `protectedTerms` for ordinary vocabulary that can legitimately appear additional times in a target language. For example, a Japanese source may contain the literal term `Project` three times while an English translation naturally introduces `Project` in other sentences. In that case, put `Project` in `glossary` instead.
 
 ### `glossary`
+
+Translation preferences that control terminology without requiring source/target occurrence counts to match.
+
+Use an identity glossary entry when a canonical term should stay unchanged but may legitimately appear additional times in the translated prose.
+
+For example:
+
+```json
+{
+  "source": "Project",
+  "target": "Project"
+}
+```
 
 Optional translation preferences.
 
