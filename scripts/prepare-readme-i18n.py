@@ -110,17 +110,30 @@ glossary = config.get("glossary", [])
 if not isinstance(glossary, list):
     raise SystemExit("config glossary must be an array")
 
-terms: list[dict[str, str]] = []
-seen: set[tuple[str, str, str]] = set()
+# Literal identity terms and translation glossary terms serve different purposes.
+#
+# - protectedTerms and glossary entries where source == target are literal terms:
+#   they are masked before the LLM sees the line, then restored afterward.
+# - only non-identity glossary entries are sent to md-translator's glossary
+#   enforcement layer.
+#
+# Keeping identity entries out of the glossary is important because upstream
+# leak-through replacement is intentionally case-insensitive. A term such as
+# "CI" -> "CI" must not rewrite ordinary French "ci" into "CI".
+literal_terms_by_language: dict[str, list[str]] = {lang: [] for lang in targets}
+
+
+def add_literal_term(lang: str, value: str) -> None:
+    if value not in literal_terms_by_language[lang]:
+        literal_terms_by_language[lang].append(value)
+
 
 for lang in targets:
     for term in protected_terms:
-        key = (term, term, lang)
-        if key not in seen:
-            seen.add(key)
-            terms.append(
-                {"source": term, "target": term, "targetLang": lang}
-            )
+        add_literal_term(lang, term)
+
+terms: list[dict[str, str]] = []
+seen: set[tuple[str, str, str]] = set()
 
 for entry in glossary:
     if not isinstance(entry, dict):
@@ -141,25 +154,25 @@ for entry in glossary:
             f"glossary targetLang is not configured: {target_lang!r}"
         )
 
+    normalized_source = source.strip()
+    normalized_target = target.strip()
+    is_identity = normalized_source == normalized_target
+
     entry_targets = targets if target_lang is None else [target_lang]
     for lang in entry_targets:
         if lang not in targets:
             continue
+
+        if is_identity:
+            add_literal_term(lang, normalized_source)
+            continue
+
         key = (source, target, lang)
         if key not in seen:
             seen.add(key)
             terms.append(
                 {"source": source, "target": target, "targetLang": lang}
             )
-
-literal_terms_by_language: dict[str, list[str]] = {lang: [] for lang in targets}
-for term in terms:
-    if term["source"] != term["target"]:
-        continue
-    lang = term["targetLang"]
-    value = term["source"]
-    if value not in literal_terms_by_language[lang]:
-        literal_terms_by_language[lang].append(value)
 
 for lang in literal_terms_by_language:
     literal_terms_by_language[lang].sort(key=lambda value: (-len(value), value))
