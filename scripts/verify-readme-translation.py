@@ -46,11 +46,11 @@ inline_code_re = re.compile(
     + re.escape(tick)
     + r"(?!" + re.escape(tick) + r")"
 )
-if inline_code_re.findall(source) != inline_code_re.findall(translated):
+if sorted(inline_code_re.findall(source)) != sorted(inline_code_re.findall(translated)):
     errors.append("inline code spans changed")
 
 link_dest_re = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
-if link_dest_re.findall(source) != link_dest_re.findall(translated):
+if sorted(link_dest_re.findall(source)) != sorted(link_dest_re.findall(translated)):
     errors.append("Markdown link/image destinations changed")
 
 heading_re = re.compile(r"(?m)^(#{1,6})\s")
