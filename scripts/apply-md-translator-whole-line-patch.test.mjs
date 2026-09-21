@@ -52,6 +52,10 @@ test('runtime patch wires a dedicated source-residue repair prompt', () => {
   assert.match(patched, /maskLiteralTerms/);
   assert.match(patched, /restoreLiteralTerms/);
   assert.match(patched, /README_LITERAL_/);
+  assert.match(patched, /leadingSyntaxTokenPattern/);
+  assert.match(patched, /HEADING\|LIST\|BLOCKQUOTE/);
+  assert.match(patched, /normalizeLeadingSyntaxToken/);
+  assert.match(patched, /translatedLine\.startsWith\(expected\)/);
   assert.match(patched, /The previous translation left source-language prose untranslated/);
   assert.match(patched, /source-language residue persists/);
   assert.match(patched, /final quality gate will reject it/);
