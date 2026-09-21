@@ -35,7 +35,14 @@ jobs:
       - name: Smoke-test configuration preparation
         run: |
           set -eu
-          python scripts/prepare-readme-i18n.py             --config config.example.json             --source-file README.md             --source-language ja             --target all             --settings-out "$RUNNER_TEMP/settings.json"             --targets-out "$RUNNER_TEMP/targets.txt"             --meta-out "$RUNNER_TEMP/meta.json"
+
+          cat > "$RUNNER_TEMP/source.md" <<'EOF'
+          # Example Product
+
+          **Project** — 目的と範囲を記録します。
+          EOF
+
+          python scripts/prepare-readme-i18n.py             --config config.example.json             --source-file "$RUNNER_TEMP/source.md"             --source-language ja             --target all             --settings-out "$RUNNER_TEMP/settings.json"             --targets-out "$RUNNER_TEMP/targets.txt"             --meta-out "$RUNNER_TEMP/meta.json"
 
           test -s "$RUNNER_TEMP/settings.json"
           test -s "$RUNNER_TEMP/targets.txt"
