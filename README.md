@@ -74,7 +74,7 @@ Do **not** use `protectedTerms` for ordinary vocabulary that can legitimately ap
 
 ### `sourceResiduePatterns`
 
-Optional regular expressions used to catch untranslated source-language text that survives outside fenced code blocks.
+Optional regular expressions used to catch untranslated source-language text that survives outside fenced code blocks. These rules are also passed into the whole-line translation patch: if a generated line still matches a residue rule and is not allowlisted, that source line is translated one more time before the final Quality Gate.
 
 For a Japanese canonical README, a practical starting point is:
 
@@ -147,8 +147,8 @@ The reusable workflow:
 5. checks out the pinned `md-translator` source;
 6. applies the whole-line Markdown patch;
 7. translates the selected languages through one translator process;
-8. retries one line once if protected Markdown tokens are damaged;
-9. verifies Markdown structure and protected terms;
+8. retries one line once if protected Markdown tokens are damaged or source-language residue is detected;
+9. verifies Markdown structure, protected terms, and configured source-language residue;
 10. uploads the generated files as a review Artifact.
 
 `all` uses every configured target language in the same translator process, so request pacing and request counting remain shared across the full run.
