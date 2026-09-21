@@ -8,11 +8,40 @@ if (!root) {
 }
 
 const target = join(root, "src/app/lib/translation/cliFormat.ts");
-const source = readFileSync(target, "utf8");
-const marker = "    const { contentLines, sourceLineNumbers } = parsed;\n\n    // 结构化模式:";
+const cliTarget = join(root, "scripts/cli.ts");
+let source = readFileSync(target, "utf8");
+let cliSource = readFileSync(cliTarget, "utf8");
 
+const contextSignature =
+  'translate: (texts: string[], documentType: "subtitle" | "markdown" | undefined, meta: TranslateBatchMeta, opts?: { independent?: boolean }) => Promise<PipelineOutcome>;';
+const patchedContextSignature =
+  'translate: (texts: string[], documentType: "subtitle" | "markdown" | undefined, meta: TranslateBatchMeta, opts?: { independent?: boolean; userPrompt?: string }) => Promise<PipelineOutcome>;';
+
+if (!source.includes(contextSignature)) {
+  console.error("Pinned md-translator CliFormatContext no longer matches the expected patch point.");
+  process.exit(1);
+}
+source = source.replace(contextSignature, patchedContextSignature);
+
+const cliSignature =
+  'translate: async (texts: string[], documentType: "subtitle" | "markdown" | undefined, meta: TranslateBatchMeta, opts?: { independent?: boolean }) => {';
+const patchedCliSignature =
+  'translate: async (texts: string[], documentType: "subtitle" | "markdown" | undefined, meta: TranslateBatchMeta, opts?: { independent?: boolean; userPrompt?: string }) => {';
+const configCall = '        buildConfig(lang, opts?.independent === true),';
+const patchedConfigCall =
+  '        { ...buildConfig(lang, opts?.independent === true), ...(opts?.userPrompt ? { userPrompt: opts.userPrompt } : null) },';
+
+if (!cliSource.includes(cliSignature) || !cliSource.includes(configCall)) {
+  console.error("Pinned md-translator CLI translate adapter no longer matches the expected patch point.");
+  process.exit(1);
+}
+cliSource = cliSource
+  .replace(cliSignature, patchedCliSignature)
+  .replace(configCall, patchedConfigCall);
+
+const marker = "    const { contentLines, sourceLineNumbers } = parsed;\n\n    // 结构化模式:";
 if (!source.includes(marker)) {
-  console.error("Pinned md-translator source no longer matches the PoC patch point.");
+  console.error("Pinned md-translator source no longer matches the expected whole-line patch point.");
   process.exit(1);
 }
 
@@ -52,6 +81,15 @@ const injected = [
   "        if (!residuePatterns.some((pattern) => pattern.test(translatedLine))) return false;",
   "        return !allowedResiduePatterns.some((pattern) => pattern.test(translatedLine));",
   "      };",
+  "      const residueRepairPrompt = [",
+  "        \"The previous translation left source-language prose untranslated.\",",
+  "        \"Translate the following complete Markdown line fully into \${targetLanguage}.\",",
+  "        \"Return only the corrected translated line.\",",
+  "        \"Do not leave source-language prose unchanged unless it is represented by a protected <<<...>>> token or explicitly required by the glossary.\",",
+  "        \"Preserve every protected <<<...>>> token byte-for-byte exactly once.\",",
+  "        \"\",",
+  "        \"\${content}\",",
+  "      ].join(\"\\n\");",
   "",
   "      for (let i = 0; i < contentLines.length; i++) {",
   "        const tokenMismatch = !tokensMatch(contentLines[i], cleanedLines[i]);",
@@ -60,17 +98,31 @@ const injected = [
   "          const line = sourceLineNumbers[i] ?? i + 1;",
   "          const reason = tokenMismatch ? \"protected token mismatch\" : \"source-language residue\";",
   "          console.error(\`readme-i18n-kit: \${reason} at source line \${line}; retrying once\`);",
-  "          const retryOutcome = await ctx.translate([contentLines[i]], undefined, { lineNumbers: [line], fileName: ctx.fileName });",
+  "          const retryOutcome = await ctx.translate(",
+  "            [contentLines[i]],",
+  "            undefined,",
+  "            { lineNumbers: [line], fileName: ctx.fileName },",
+  "            sourceResidue ? { userPrompt: residueRepairPrompt } : undefined,",
+  "          );",
   "          const retrySoftFilled = softFilledIndices(retryOutcome);",
   "          const retryLines = mapSkippingSoftFilled(retryOutcome.lines, retrySoftFilled, (candidate) => applyRemoveCharsToMarkdown(candidate, ctx.removeChars));",
   "          const retryFailed = retryOutcome.failures.length > 0 || retryLines.length !== 1;",
-  "          const retryTokenMismatch = !retryFailed && !tokensMatch(contentLines[i], retryLines[0]);",
-  "          const retryResidue = !retryFailed && hasSourceResidue(retryLines[0]);",
-  "          if (retryFailed || retryTokenMismatch || retryResidue) {",
-  "            const retryReason = retryTokenMismatch ? \"protected token mismatch\" : retryResidue ? \"source-language residue\" : \"translation failure\";",
-  "            throw new CliFileFormatError(retryReason + \" at source line \" + line + \" after one retry\");",
+  "          if (retryFailed) {",
+  "            if (tokenMismatch) {",
+  "              throw new CliFileFormatError(\"translation failure at source line \" + line + \" after one retry\");",
+  "            }",
+  "            console.error(\`readme-i18n-kit: source-language residue repair request failed at source line \${line}; keeping candidate for final quality gate\`);",
+  "            continue;",
   "          }",
+  "          const retryTokenMismatch = !tokensMatch(contentLines[i], retryLines[0]);",
+  "          if (retryTokenMismatch) {",
+  "            throw new CliFileFormatError(\"protected token mismatch at source line \" + line + \" after one retry\");",
+  "          }",
+  "          const retryResidue = hasSourceResidue(retryLines[0]);",
   "          cleanedLines[i] = retryLines[0];",
+  "          if (retryResidue) {",
+  "            console.error(\`readme-i18n-kit: source-language residue persists at source line \${line} after repair; final quality gate will reject it\`);",
+  "          }",
   "        }",
   "      }",
   "",
@@ -80,5 +132,8 @@ const injected = [
   "    // 構造化モード:"
 ].join("\n");
 
-writeFileSync(target, source.replace(marker, injected), "utf8");
+source = source.replace(marker, injected);
+
+writeFileSync(target, source, "utf8");
+writeFileSync(cliTarget, cliSource, "utf8");
 console.log("Applied readme-i18n-kit whole-line Markdown patch.");
