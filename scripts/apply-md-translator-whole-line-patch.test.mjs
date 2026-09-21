@@ -48,6 +48,10 @@ test('runtime patch wires a dedicated source-residue repair prompt', () => {
   assert.match(patched, /userPrompt\?: string/);
   assert.match(patched, /README_I18N_SOURCE_RESIDUE_PATTERNS_JSON/);
   assert.match(patched, /README_I18N_ALLOWED_SOURCE_RESIDUE_PATTERNS_JSON/);
+  assert.match(patched, /README_I18N_LITERAL_TERMS_BY_LANGUAGE_JSON/);
+  assert.match(patched, /maskLiteralTerms/);
+  assert.match(patched, /restoreLiteralTerms/);
+  assert.match(patched, /README_LITERAL_/);
   assert.match(patched, /The previous translation left source-language prose untranslated/);
   assert.match(patched, /source-language residue persists/);
   assert.match(patched, /final quality gate will reject it/);
