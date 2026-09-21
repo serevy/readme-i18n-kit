@@ -1,5 +1,10 @@
 {
-  "targetLanguages": ["en", "zh-CN", "ko", "fr"],
+  "targetLanguages": [
+    "en",
+    "zh-CN",
+    "ko",
+    "fr"
+  ],
   "protectedTerms": [
     "Example Product",
     "Project",
@@ -12,5 +17,9 @@
       "target": "preferred translation",
       "targetLang": "en"
     }
-  ]
+  ],
+  "sourceResiduePatterns": [
+    "[ぁ-んァ-ヶ]"
+  ],
+  "allowedSourceResiduePatterns": []
 }

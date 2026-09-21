@@ -72,6 +72,32 @@ Use this for names and identifiers that should neither change nor appear spontan
 
 Do **not** use `protectedTerms` for ordinary vocabulary that can legitimately appear additional times in a target language. For example, a Japanese source may contain the literal term `Project` three times while an English translation naturally introduces `Project` in other sentences. In that case, put `Project` in `glossary` instead.
 
+### `sourceResiduePatterns`
+
+Optional regular expressions used to catch untranslated source-language text that survives outside fenced code blocks.
+
+For a Japanese canonical README, a practical starting point is:
+
+```json
+"sourceResiduePatterns": ["[ぁ-んァ-ヶ]"]
+```
+
+This checks for surviving hiragana or katakana without treating Chinese characters alone as proof of Japanese residue.
+
+### `allowedSourceResiduePatterns`
+
+Optional line-level allowlist expressions for source-language text that should remain unchanged, such as an original-language publication title in a bibliography.
+
+If any allowlist expression matches the whole translated line, source residue on that line is accepted.
+
+Example:
+
+```json
+"allowedSourceResiduePatterns": [
+  "zenn\\.dev/softbank/articles/example"
+]
+```
+
 ### `glossary`
 
 Translation preferences that control terminology without requiring source/target occurrence counts to match.
@@ -136,7 +162,8 @@ The generic verifier currently checks:
 - fenced code blocks;
 - inline code content;
 - Markdown link and image destinations;
-- heading hierarchy.
+- heading hierarchy;
+- optional source-language residue outside fenced code blocks.
 
 Inline code and link destinations are compared as multisets so target-language grammar may reorder protected elements without silently deleting or rewriting them.
 
