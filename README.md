@@ -74,7 +74,7 @@ Do **not** use `protectedTerms` for ordinary vocabulary that can legitimately ap
 
 ### `sourceResiduePatterns`
 
-Optional regular expressions used to catch untranslated source-language text that survives outside fenced code blocks. These rules are also passed into the whole-line translation patch: if a generated line still matches a residue rule and is not allowlisted, that source line is translated one more time before the final Quality Gate.
+Optional regular expressions used to catch untranslated source-language text that survives outside fenced code blocks. These rules are also passed into the whole-line translation patch. If a generated line still matches a residue rule and is not allowlisted, that source line is translated one more time with a dedicated repair prompt that explicitly requires the remaining source-language prose to be translated.
 
 For a Japanese canonical README, a practical starting point is:
 
@@ -147,7 +147,7 @@ The reusable workflow:
 5. checks out the pinned `md-translator` source;
 6. applies the whole-line Markdown patch;
 7. translates the selected languages through one translator process;
-8. retries one line once if protected Markdown tokens are damaged or source-language residue is detected;
+8. retries one line once if protected Markdown tokens are damaged or source-language residue is detected; residue repair uses a dedicated prompt rather than repeating the original request;
 9. verifies Markdown structure, protected terms, and configured source-language residue;
 10. uploads the generated files as a review Artifact.
 
@@ -168,6 +168,8 @@ The generic verifier currently checks:
 Inline code and link destinations are compared as multisets so target-language grammar may reorder protected elements without silently deleting or rewriting them.
 
 Repository-specific semantic checks should remain in the consumer repository instead of being hard-coded into this kit.
+
+If source-language residue still remains after the one-line repair, translation continues so the other target-language files can still be produced. The final Quality Gate then fails the run and the review Artifact retains the generated outputs. Protected Markdown token corruption remains a hard failure because structurally unsafe output should not be assembled.
 
 ## Request budget
 
