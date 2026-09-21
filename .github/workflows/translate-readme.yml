@@ -145,6 +145,15 @@ jobs:
           PY
           )"
 
+          export README_I18N_LITERAL_TERMS_BY_LANGUAGE_JSON="$(
+            python - "$RUNNER_TEMP/readme-i18n-meta.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          meta = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          print(json.dumps(meta.get("literalTermsByLanguage", {}), ensure_ascii=False))
+          PY
+          )"
+
           python - "$RUNNER_TEMP/readme-i18n-settings.base.json" "$settings_file" <<'PY'
           import json, os, sys
           from pathlib import Path
