@@ -41,5 +41,15 @@ jobs:
           test -s "$RUNNER_TEMP/targets.txt"
           test -s "$RUNNER_TEMP/meta.json"
 
+          python - "$RUNNER_TEMP/meta.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          meta = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          literal = meta["literalTermsByLanguage"]
+          for lang in ("en", "zh-CN", "ko", "fr"):
+              assert "Project" in literal[lang]
+              assert "Example Product" in literal[lang]
+          PY
+
       - name: Smoke-test generic verifier
         run: python scripts/verify-readme-translation.py README.md README.md config.example.json
