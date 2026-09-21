@@ -149,10 +149,11 @@ The reusable workflow:
 5. checks out the pinned `md-translator` source;
 6. applies the whole-line Markdown patch;
 7. masks literal identity terms, then translates the selected languages through one translator process;
-8. restores literal terms after translation while preserving Markdown placeholders;
-9. retries one line once if protected Markdown tokens are damaged or source-language residue is detected; residue repair uses a dedicated prompt rather than repeating the original request;
-10. verifies Markdown structure, protected terms, and configured source-language residue;
-11. uploads the generated files as a review Artifact.
+8. restores leading heading/list/blockquote syntax tokens to the beginning of their line when an LLM reorders them;
+9. restores literal terms after translation while preserving Markdown placeholders;
+10. retries one line once if protected Markdown tokens are damaged or source-language residue is detected; residue repair uses a dedicated prompt rather than repeating the original request;
+11. verifies Markdown structure, protected terms, and configured source-language residue;
+12. uploads the generated files as a review Artifact.
 
 `all` uses every configured target language in the same translator process, so request pacing and request counting remain shared across the full run.
 
@@ -168,7 +169,7 @@ The generic verifier currently checks:
 - heading hierarchy;
 - optional source-language residue outside fenced code blocks.
 
-Inline code and link destinations are compared as multisets so target-language grammar may reorder protected elements without silently deleting or rewriting them.
+Inline code and link destinations are compared as multisets so target-language grammar may reorder protected elements without silently deleting or rewriting them. Leading Markdown structure tokens for headings, lists, and blockquotes are different: the runtime patch deterministically restores those tokens to the beginning of the line before validation, because moving them changes Markdown structure.
 
 Repository-specific semantic checks should remain in the consumer repository instead of being hard-coded into this kit.
 
