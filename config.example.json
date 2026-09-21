@@ -1,0 +1,16 @@
+{
+  "targetLanguages": ["en", "zh-CN", "ko", "fr"],
+  "protectedTerms": [
+    "Example Product",
+    "Project",
+    "Product",
+    "Process"
+  ],
+  "glossary": [
+    {
+      "source": "canonical term",
+      "target": "preferred translation",
+      "targetLang": "en"
+    }
+  ]
+}
