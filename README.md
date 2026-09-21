@@ -70,6 +70,8 @@ Literal identifiers whose **occurrence count must remain unchanged** between the
 
 Use this for names and identifiers that should neither change nor appear spontaneously, such as repository names, version strings, schema/status keys, and unique product names.
 
+During LLM translation, exact identity terms from `protectedTerms` and identity glossary entries (`source == target`) are temporarily replaced with internal protected tokens and restored afterward. This keeps literal terms out of the model's translation decision while allowing surrounding prose to translate naturally.
+
 Do **not** use `protectedTerms` for ordinary vocabulary that can legitimately appear additional times in a target language. For example, a Japanese source may contain the literal term `Project` three times while an English translation naturally introduces `Project` in other sentences. In that case, put `Project` in `glossary` instead.
 
 ### `sourceResiduePatterns`
@@ -146,10 +148,11 @@ The reusable workflow:
 4. estimates a bounded request budget from README size and selected target count;
 5. checks out the pinned `md-translator` source;
 6. applies the whole-line Markdown patch;
-7. translates the selected languages through one translator process;
-8. retries one line once if protected Markdown tokens are damaged or source-language residue is detected; residue repair uses a dedicated prompt rather than repeating the original request;
-9. verifies Markdown structure, protected terms, and configured source-language residue;
-10. uploads the generated files as a review Artifact.
+7. masks literal identity terms, then translates the selected languages through one translator process;
+8. restores literal terms after translation while preserving Markdown placeholders;
+9. retries one line once if protected Markdown tokens are damaged or source-language residue is detected; residue repair uses a dedicated prompt rather than repeating the original request;
+10. verifies Markdown structure, protected terms, and configured source-language residue;
+11. uploads the generated files as a review Artifact.
 
 `all` uses every configured target language in the same translator process, so request pacing and request counting remain shared across the full run.
 

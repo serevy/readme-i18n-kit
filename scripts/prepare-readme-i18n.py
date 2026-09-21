@@ -152,6 +152,18 @@ for entry in glossary:
                 {"source": source, "target": target, "targetLang": lang}
             )
 
+literal_terms_by_language: dict[str, list[str]] = {lang: [] for lang in targets}
+for term in terms:
+    if term["source"] != term["target"]:
+        continue
+    lang = term["targetLang"]
+    value = term["source"]
+    if value not in literal_terms_by_language[lang]:
+        literal_terms_by_language[lang].append(value)
+
+for lang in literal_terms_by_language:
+    literal_terms_by_language[lang].sort(key=lambda value: (-len(value), value))
+
 max_tokens = config.get("maxTokens", 2048)
 retry_count = config.get("retryCount", 1)
 request_timeout = config.get("requestTimeoutSec", 180)
@@ -249,6 +261,7 @@ Path(args.meta_out).write_text(
             "targets": targets,
             "translatableLineEstimate": line_count,
             "maxRequests": max_requests,
+            "literalTermsByLanguage": literal_terms_by_language,
         },
         ensure_ascii=False,
         indent=2,
