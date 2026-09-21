@@ -19,7 +19,7 @@ if (!source.includes(marker)) {
 const injected = [
   "    const { contentLines, sourceLineNumbers } = parsed;",
   "",
-  "    // README i18n whole-line mode (LLM only):",
+  "    // readme-i18n-kit whole-line mode (LLM only):",
   "    // keep md-translator's placeholder protection, but send each protected line as",
   "    // one unit so the model can choose natural target-language word order around",
   "    // inline code / links. Hard-fail if any placeholder is lost, duplicated,",
@@ -38,7 +38,7 @@ const injected = [
   "      for (let i = 0; i < contentLines.length; i++) {",
   "        if (!tokensMatch(contentLines[i], cleanedLines[i])) {",
   "          const line = sourceLineNumbers[i] ?? i + 1;",
-  "          console.error(\`README i18n: protected token mismatch at source line \${line}; retrying once\`);",
+  "          console.error(\`readme-i18n-kit: protected token mismatch at source line \${line}; retrying once\`);",
   "          const retryOutcome = await ctx.translate([contentLines[i]], undefined, { lineNumbers: [line], fileName: ctx.fileName });",
   "          const retrySoftFilled = softFilledIndices(retryOutcome);",
   "          const retryLines = mapSkippingSoftFilled(retryOutcome.lines, retrySoftFilled, (candidate) => applyRemoveCharsToMarkdown(candidate, ctx.removeChars));",
@@ -56,4 +56,4 @@ const injected = [
 ].join("\n");
 
 writeFileSync(target, source.replace(marker, injected), "utf8");
-console.log("Applied README i18n whole-line Markdown patch.");
+console.log("Applied readme-i18n-kit whole-line Markdown patch.");
