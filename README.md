@@ -66,11 +66,11 @@ The canonical source language must not also appear in this list.
 
 ### `protectedTerms`
 
-Literal identifiers whose **occurrence count must remain unchanged** between the canonical README and each generated translation. Each protected term is also supplied to the translator as an identity glossary entry.
+Literal identifiers whose **occurrence count must remain unchanged** between the canonical README and each generated translation. Protected terms are handled by local literal masking; they are not sent through glossary enforcement.
 
 Use this for names and identifiers that should neither change nor appear spontaneously, such as repository names, version strings, schema/status keys, and unique product names.
 
-During LLM translation, exact identity terms from `protectedTerms` and identity glossary entries (`source == target`) are temporarily replaced with internal protected tokens and restored afterward. This keeps literal terms out of the model's translation decision while allowing surrounding prose to translate naturally.
+During LLM translation, exact identity terms from `protectedTerms` and identity glossary entries (`source == target`) are temporarily replaced with internal protected tokens and restored afterward. Identity terms are deliberately excluded from the translator's glossary prompt and post-translation glossary replacement. This keeps literal terms out of the model's translation decision and prevents short identity terms such as `CI → CI` from case-insensitively rewriting ordinary target-language text such as French `ci`.
 
 Do **not** use `protectedTerms` for ordinary vocabulary that can legitimately appear additional times in a target language. For example, a Japanese source may contain the literal term `Project` three times while an English translation naturally introduces `Project` in other sentences. In that case, put `Project` in `glossary` instead.
 
@@ -104,7 +104,7 @@ Example:
 
 Translation preferences that control terminology without requiring source/target occurrence counts to match.
 
-Use an identity glossary entry when a canonical term should stay unchanged but may legitimately appear additional times in the translated prose.
+Use an identity glossary entry when a canonical term should stay unchanged but may legitimately appear additional times in the translated prose. Identity entries are treated as mask-only literal terms rather than glossary-enforcement rules.
 
 For example:
 
@@ -115,7 +115,7 @@ For example:
 }
 ```
 
-Optional translation preferences.
+Non-identity entries (`source != target`) remain normal translation preferences and are passed to the translator's glossary enforcement layer.
 
 An entry without `targetLang` applies to every selected target language:
 
