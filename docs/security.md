@@ -19,7 +19,7 @@ The current workflow:
 - rejects redirects;
 - starts HTTP requests at least eight seconds apart;
 - applies a per-run request cap derived from README size and target count;
-- retries a line once when protected Markdown tokens are damaged or configured source-language residue remains;
+- retries a line once when protected Markdown tokens are damaged or configured source-language residue remains; residue repair uses a dedicated prompt;
 - runs Markdown, protected-term, and source-residue quality checks before uploading the review Artifact.
 
 The request guard protects the pinned translator's global `fetch` path. It is not a complete process sandbox or network sandbox.
@@ -41,6 +41,8 @@ GitHub Actions concurrency is repository-scoped. Two different caller repositori
 Generated translations are Artifacts for review. Structural checks can catch many forms of Markdown damage, but they do not prove linguistic quality or semantic equivalence.
 
 A human should review translations before publishing them.
+
+If residue repair still leaves source-language prose, the workflow keeps generating the remaining target languages and relies on the final Quality Gate to fail the run. This preserves review Artifacts for diagnosis. Protected-token corruption still stops translation immediately.
 
 ## Updating dependencies
 
