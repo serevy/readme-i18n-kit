@@ -90,6 +90,22 @@ if not isinstance(protected_terms, list) or not all(
 ):
     raise SystemExit("config protectedTerms must be a list of non-empty strings")
 
+for field_name in ("sourceResiduePatterns", "allowedSourceResiduePatterns"):
+    patterns = config.get(field_name, [])
+    if not isinstance(patterns, list) or not all(
+        isinstance(pattern, str) and pattern for pattern in patterns
+    ):
+        raise SystemExit(
+            f"config {field_name} must be a list of non-empty regex strings"
+        )
+    for pattern in patterns:
+        try:
+            re.compile(pattern)
+        except re.error as error:
+            raise SystemExit(
+                f"invalid regex in {field_name}: {pattern!r}: {error}"
+            ) from error
+
 glossary = config.get("glossary", [])
 if not isinstance(glossary, list):
     raise SystemExit("config glossary must be an array")
