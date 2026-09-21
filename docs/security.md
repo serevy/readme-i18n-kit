@@ -19,6 +19,7 @@ The current workflow:
 - rejects redirects;
 - starts HTTP requests at least eight seconds apart;
 - applies a per-run request cap derived from README size and target count;
+- masks literal identity terms locally and excludes them from case-insensitive glossary enforcement, avoiding accidental rewrites such as French `ci` → `CI`;
 - retries a line once when protected Markdown tokens are damaged or configured source-language residue remains; residue repair uses a dedicated prompt;
 - runs Markdown, protected-term, and source-residue quality checks before uploading the review Artifact.
 
