@@ -14,6 +14,32 @@ translated = Path(sys.argv[2]).read_text(encoding="utf-8")
 config = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
 errors: list[str] = []
 
+source_residue_patterns = config.get("sourceResiduePatterns", [])
+allowed_source_residue_patterns = config.get("allowedSourceResiduePatterns", [])
+
+if not isinstance(source_residue_patterns, list) or not all(
+    isinstance(pattern, str) and pattern for pattern in source_residue_patterns
+):
+    raise SystemExit(
+        "config sourceResiduePatterns must be a list of non-empty regex strings"
+    )
+
+if not isinstance(allowed_source_residue_patterns, list) or not all(
+    isinstance(pattern, str) and pattern
+    for pattern in allowed_source_residue_patterns
+):
+    raise SystemExit(
+        "config allowedSourceResiduePatterns must be a list of non-empty regex strings"
+    )
+
+try:
+    source_residue_res = [re.compile(pattern) for pattern in source_residue_patterns]
+    allowed_source_residue_res = [
+        re.compile(pattern) for pattern in allowed_source_residue_patterns
+    ]
+except re.error as error:
+    raise SystemExit(f"invalid source residue regex: {error}") from error
+
 protected_terms = config.get("protectedTerms", [])
 if not isinstance(protected_terms, list) or not all(
     isinstance(term, str) and term for term in protected_terms
@@ -58,6 +84,48 @@ if [len(x) for x in heading_re.findall(source)] != [
     len(x) for x in heading_re.findall(translated)
 ]:
     errors.append("heading hierarchy changed")
+
+
+def lines_outside_fences(text: str) -> list[tuple[int, str]]:
+    result: list[tuple[int, str]] = []
+    in_fence = False
+    opening_fence = ""
+
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        stripped = line.lstrip()
+        backtick_fence = chr(96) * 3
+        tilde_fence = "~" * 3
+
+        if not in_fence and (
+            stripped.startswith(backtick_fence)
+            or stripped.startswith(tilde_fence)
+        ):
+            in_fence = True
+            opening_fence = stripped[:3]
+            continue
+
+        if in_fence:
+            if stripped.startswith(opening_fence):
+                in_fence = False
+                opening_fence = ""
+            continue
+
+        result.append((line_number, line))
+
+    return result
+
+
+if source_residue_res:
+    for line_number, line in lines_outside_fences(translated):
+        if any(regex.search(line) for regex in source_residue_res):
+            if any(
+                regex.search(line) for regex in allowed_source_residue_res
+            ):
+                continue
+            errors.append(
+                "source-language residue detected at translated line "
+                f"{line_number}: {line[:160]!r}"
+            )
 
 
 if errors:
