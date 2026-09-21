@@ -1,0 +1,191 @@
+name: Reusable README i18n
+
+on:
+  workflow_call:
+    inputs:
+      source_file:
+        description: Canonical Markdown README path in the caller repository
+        required: false
+        type: string
+        default: README.md
+      source_language:
+        description: Canonical source language code
+        required: true
+        type: string
+      target:
+        description: all or one language listed in the consumer config
+        required: false
+        type: string
+        default: all
+      config_path:
+        description: Consumer configuration path in the caller repository
+        required: false
+        type: string
+        default: .readme-i18n/config.json
+      artifact_prefix:
+        description: Prefix for the review Artifact name
+        required: false
+        type: string
+        default: readme-i18n
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+# GitHub concurrency is repository-scoped. This prevents overlapping README
+# translation runs inside one caller repository, but not across repositories.
+concurrency:
+  group: readme-i18n-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  translate:
+    name: translate-${{ inputs.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      KIT_DIR: ${{ github.workspace }}/.readme-i18n-kit-runtime
+      OUTPUT_DIR: ${{ github.workspace }}/readme-i18n-output
+      SOURCE_FILE: ${{ inputs.source_file }}
+      SOURCE_LANGUAGE: ${{ inputs.source_language }}
+      TARGET_SELECTION: ${{ inputs.target }}
+      CONFIG_PATH: ${{ inputs.config_path }}
+
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Checkout readme-i18n-kit at the called workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .readme-i18n-kit-runtime
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '20.19.0'
+
+      - name: Test request guard without API access
+        run: node "$KIT_DIR/scripts/translation-fetch-guard.test.mjs"
+
+      - name: Prepare translation configuration
+        id: prepare
+        run: |
+          set -eu
+          test -f "$SOURCE_FILE" || {
+            echo "::error::Canonical source file not found: $SOURCE_FILE"
+            exit 1
+          }
+          test -f "$CONFIG_PATH" || {
+            echo "::error::Consumer config not found: $CONFIG_PATH"
+            exit 1
+          }
+
+          max_requests="$(
+            python "$KIT_DIR/scripts/prepare-readme-i18n.py"               --config "$CONFIG_PATH"               --source-file "$SOURCE_FILE"               --source-language "$SOURCE_LANGUAGE"               --target "$TARGET_SELECTION"               --settings-out "$RUNNER_TEMP/readme-i18n-settings.base.json"               --targets-out "$RUNNER_TEMP/readme-i18n-targets.txt"               --meta-out "$RUNNER_TEMP/readme-i18n-meta.json"
+          )"
+
+          echo "max_requests=$max_requests" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/readme-i18n-meta.json"
+
+      - name: Checkout pinned md-translator source
+        env:
+          MD_TRANSLATOR_SHA: 25d07cebc70266ed06bcfb7e5e1ef97253c3e998
+        run: |
+          git clone --filter=blob:none https://github.com/rockbenben/md-translator.git "$RUNNER_TEMP/md-translator"
+          git -C "$RUNNER_TEMP/md-translator" checkout --detach "$MD_TRANSLATOR_SHA"
+
+      - name: Apply whole-line Markdown patch
+        run: |
+          node "$KIT_DIR/scripts/apply-md-translator-whole-line-patch.mjs" "$RUNNER_TEMP/md-translator"
+          grep -Fq "README i18n whole-line mode" "$RUNNER_TEMP/md-translator/src/app/lib/translation/cliFormat.ts"
+
+      - name: Install pinned translator dependencies
+        working-directory: ${{ runner.temp }}/md-translator
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Translate canonical README
+        working-directory: ${{ runner.temp }}/md-translator
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          README_I18N_FETCH_GUARD: '1'
+          README_I18N_MAX_REQUESTS: ${{ steps.prepare.outputs.max_requests }}
+        run: |
+          set -eu
+          test -n "$OPENAI_API_KEY" || {
+            echo "::error::OPENAI_API_KEY is required."
+            exit 1
+          }
+
+          settings_file="$(mktemp "$RUNNER_TEMP/readme-i18n-settings.XXXXXX.json")"
+          trap 'rm -f "$settings_file"' EXIT
+
+          python - "$RUNNER_TEMP/readme-i18n-settings.base.json" "$settings_file" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1])
+          output = Path(sys.argv[2])
+          settings = json.loads(source.read_text(encoding="utf-8"))
+          settings["translationConfigs"]["openai"]["apiKey"] = os.environ["OPENAI_API_KEY"]
+
+          output.touch(mode=0o600)
+          output.write_text(json.dumps(settings), encoding="utf-8")
+          output.chmod(0o600)
+          PY
+          unset OPENAI_API_KEY
+
+          rm -rf "$OUTPUT_DIR"
+          mkdir -p "$OUTPUT_DIR"
+
+          target_args=()
+          while IFS= read -r lang; do
+            test -n "$lang" && target_args+=(-t "$lang")
+          done < "$RUNNER_TEMP/readme-i18n-targets.txt"
+
+          node             --import "$KIT_DIR/scripts/translation-fetch-guard.mjs"             --import tsx scripts/cli.ts             -i "$GITHUB_WORKSPACE/$SOURCE_FILE"             -f "$SOURCE_LANGUAGE" "${target_args[@]}" -m openai             -s "$settings_file"             --model gpt-5.6-luna             --no-relay --no-context --no-cache             -o "$OUTPUT_DIR"
+
+      - name: Verify Markdown structure and protected terms
+        run: |
+          set -eu
+
+          source_name="$(basename "$SOURCE_FILE")"
+          stem="${source_name%.*}"
+          ext="${source_name##*.}"
+          expected=0
+
+          while IFS= read -r lang; do
+            test -n "$lang" || continue
+            expected=$((expected + 1))
+            translated="$OUTPUT_DIR/${stem}.${lang}.${ext}"
+            test -s "$translated" || {
+              echo "::error::Expected translated README is missing: $translated"
+              exit 1
+            }
+            python "$KIT_DIR/scripts/verify-readme-translation.py"               "$SOURCE_FILE" "$translated" "$CONFIG_PATH"
+          done < "$RUNNER_TEMP/readme-i18n-targets.txt"
+
+          mapfile -t generated < <(
+            find "$OUTPUT_DIR" -maxdepth 1 -type f -name "${stem}.*.${ext}" -print
+          )
+          if [ "${#generated[@]}" -ne "$expected" ]; then
+            echo "::error::Expected $expected translated README file(s), found ${#generated[@]}"
+            printf '%s\n' "${generated[@]}"
+            exit 1
+          fi
+
+      - name: Upload translations for human review
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ inputs.artifact_prefix }}-${{ inputs.target }}
+          path: readme-i18n-output/
+          if-no-files-found: warn
+          retention-days: 7
