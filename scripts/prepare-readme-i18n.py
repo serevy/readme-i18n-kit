@@ -68,6 +68,9 @@ config_path = Path(args.config)
 source_path = Path(args.source_file)
 config = json.loads(config_path.read_text(encoding="utf-8"))
 
+if not LANG_RE.fullmatch(args.source_language):
+    raise SystemExit(f"invalid source language: {args.source_language!r}")
+
 all_targets = require_languages(config.get("targetLanguages"))
 if args.source_language in all_targets:
     raise SystemExit("source language must not appear in targetLanguages")
@@ -117,6 +120,10 @@ for entry in glossary:
         raise SystemExit("glossary target must be a non-empty string")
     if target_lang is not None and not isinstance(target_lang, str):
         raise SystemExit("glossary targetLang must be a string when present")
+    if target_lang is not None and target_lang not in all_targets:
+        raise SystemExit(
+            f"glossary targetLang is not configured: {target_lang!r}"
+        )
 
     entry_targets = targets if target_lang is None else [target_lang]
     for lang in entry_targets:
@@ -191,11 +198,16 @@ settings = {
 source_text = source_path.read_text(encoding="utf-8")
 line_count = translatable_line_count(source_text)
 
-derived_cap = max(
+raw_derived_cap = max(
     60,
     math.ceil(line_count * len(targets) * 1.20) + 10,
 )
-derived_cap = min(derived_cap, 400)
+if raw_derived_cap > 400:
+    raise SystemExit(
+        "estimated request budget exceeds 400; run fewer target languages "
+        "in one job or shorten the canonical README"
+    )
+derived_cap = raw_derived_cap
 
 configured_cap = config.get("maxRequests")
 if configured_cap is not None:
