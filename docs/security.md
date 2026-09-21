@@ -19,7 +19,8 @@ The current workflow:
 - rejects redirects;
 - starts HTTP requests at least eight seconds apart;
 - applies a per-run request cap derived from README size and target count;
-- runs Markdown and protected-term quality checks before uploading the review Artifact.
+- retries a line once when protected Markdown tokens are damaged or configured source-language residue remains;
+- runs Markdown, protected-term, and source-residue quality checks before uploading the review Artifact.
 
 The request guard protects the pinned translator's global `fetch` path. It is not a complete process sandbox or network sandbox.
 

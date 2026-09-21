@@ -127,6 +127,24 @@ jobs:
           settings_file="$(mktemp "$RUNNER_TEMP/readme-i18n-settings.XXXXXX.json")"
           trap 'rm -f "$settings_file"' EXIT
 
+          export README_I18N_SOURCE_RESIDUE_PATTERNS_JSON="$(
+            python - "$GITHUB_WORKSPACE/$CONFIG_PATH" <<'PY'
+          import json, sys
+          from pathlib import Path
+          config = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          print(json.dumps(config.get("sourceResiduePatterns", []), ensure_ascii=False))
+          PY
+          )"
+
+          export README_I18N_ALLOWED_SOURCE_RESIDUE_PATTERNS_JSON="$(
+            python - "$GITHUB_WORKSPACE/$CONFIG_PATH" <<'PY'
+          import json, sys
+          from pathlib import Path
+          config = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          print(json.dumps(config.get("allowedSourceResiduePatterns", []), ensure_ascii=False))
+          PY
+          )"
+
           python - "$RUNNER_TEMP/readme-i18n-settings.base.json" "$settings_file" <<'PY'
           import json, os, sys
           from pathlib import Path

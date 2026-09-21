@@ -23,8 +23,8 @@ jobs:
         with:
           node-version: '20.19.0'
 
-      - name: Test request guard
-        run: node --test scripts/translation-fetch-guard.test.mjs
+      - name: Test Node helpers
+        run: node --test scripts/*.test.mjs
 
       - name: Compile Python helpers
         run: python -m py_compile scripts/prepare-readme-i18n.py scripts/verify-readme-translation.py scripts/verify-readme-translation.test.py
