@@ -1,0 +1,31 @@
+name: README i18n self-dogfood
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target language
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - ja
+          - zh-CN
+          - ko
+          - fr
+
+permissions:
+  contents: read
+
+jobs:
+  translate:
+    uses: serevy/readme-i18n-kit/.github/workflows/translate-readme.yml@ea9d3ed067b8f58b7134570344969c5c636194e8
+    with:
+      source_file: README.md
+      source_language: en
+      target: ${{ inputs.target }}
+      config_path: .readme-i18n/config.json
+      artifact_prefix: readme-i18n-kit-readme
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
