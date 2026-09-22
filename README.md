@@ -183,6 +183,20 @@ A single run is capped at 400 requests. If the estimate exceeds that boundary, p
 
 The reusable job timeout is 60 minutes.
 
+## Project decisions
+
+Important Project, Product, and Process decisions for this repository are recorded in [`docs/records/`](docs/records/).
+
+Detailed implementation work, translation runs, failure investigation, and raw results remain in Issues and pull requests. PDDR records summarize decision-relevant context and Evidence that should remain understandable after that work is closed.
+
+Validate records with:
+
+```bash
+python .pddr/pddr.py validate
+```
+
+The repository uses [PDDR Kit](https://github.com/serevy/pddr-kit) v0.1.0.
+
 ## Security
 
 See [`docs/security.md`](docs/security.md).
