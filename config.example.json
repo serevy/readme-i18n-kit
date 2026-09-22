@@ -7,11 +7,23 @@
   ],
   "protectedTerms": [
     "Example Product",
-    "Project",
-    "Product",
-    "Process"
+    "example-cli",
+    "needs-confirmation",
+    "v1.0.0"
   ],
   "glossary": [
+    {
+      "source": "Project",
+      "target": "Project"
+    },
+    {
+      "source": "Product",
+      "target": "Product"
+    },
+    {
+      "source": "Process",
+      "target": "Process"
+    },
     {
       "source": "canonical term",
       "target": "preferred translation",
