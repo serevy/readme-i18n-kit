@@ -1,0 +1,43 @@
+{
+  "targetLanguages": [
+    "ja",
+    "zh-CN",
+    "ko",
+    "fr"
+  ],
+  "protectedTerms": [
+    "readme-i18n-kit",
+    "semantic-decision-lab",
+    "pddr-kit",
+    "PDDR Kit",
+    "gpt-5.6-luna"
+  ],
+  "glossary": [
+    {
+      "source": "OpenAI",
+      "target": "OpenAI"
+    },
+    {
+      "source": "GitHub Actions",
+      "target": "GitHub Actions"
+    },
+    {
+      "source": "Markdown",
+      "target": "Markdown"
+    },
+    {
+      "source": "Artifact",
+      "target": "Artifact"
+    },
+    {
+      "source": "PDDR",
+      "target": "PDDR"
+    },
+    {
+      "source": "Quality Gate",
+      "target": "Quality Gate"
+    }
+  ],
+  "sourceResiduePatterns": [],
+  "allowedSourceResiduePatterns": []
+}
