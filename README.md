@@ -1,193 +1,220 @@
 # readme-i18n-kit
 
-Reusable README translation tooling extracted from a workflow that was first validated on a real public repository.
+Reusable, review-first README translation tooling for GitHub Actions.
 
-The kit focuses on Markdown structure protection, terminology preservation, request-rate guards, review-only Artifacts, and a human-review-first publication flow.
+Keep one canonical Markdown README, generate one or more target-language READMEs, protect Markdown structure and literal terminology, and review the resulting Artifact before publication.
 
-> Status: pre-release dogfooding.
+> Status: pre-release. The workflow has been dogfooded on public repositories including `semantic-decision-lab` and `pddr-kit`; PDDR Kit used it from a Japanese canonical README to generate four target languages before human-reviewed five-language publication.
 
-## What it does
+## Why this exists
 
-A caller repository keeps one canonical Markdown README and a small repository-specific config. The reusable workflow translates the canonical README into one configured target language or all target languages in a single run.
+README translation is not only a language problem.
 
-The current profile is intentionally opinionated:
+A useful repository workflow also needs to preserve:
 
-- OpenAI Chat Completions
-- `gpt-5.6-luna`
-- Standard service tier
-- relay disabled
-- human review before publication
-- no automatic commit, push, or merge
+- Markdown structure, links, inline code, and fenced blocks;
+- repository/product identifiers and terminology;
+- target-language word order around protected Markdown;
+- bounded request/rate behavior;
+- failure diagnostics and partial review outputs;
+- a human checkpoint before publication.
 
-The model/provider profile can be generalized later. The first goal is to extract a known working path without weakening its safety boundaries.
+`readme-i18n-kit` packages those concerns into a reusable GitHub Actions workflow.
+
+## Current profile
+
+The initial runtime profile is intentionally narrow:
+
+- OpenAI Chat Completions;
+- `gpt-5.6-luna`;
+- Standard service tier;
+- relay disabled;
+- pinned `md-translator` source;
+- bounded request pacing/cap;
+- review Artifact output;
+- no automatic commit, push, merge, or publication.
+
+Provider/model generalization is intentionally deferred until the current safety and review contract is stable.
+
+## Start here
+
+- **Install it:** [`docs/setup.md`](docs/setup.md)
+- **Run, review, and publish:** [`docs/usage.md`](docs/usage.md)
+- **Diagnose failures:** [`docs/troubleshooting.md`](docs/troubleshooting.md)
+- **Understand trust boundaries:** [`docs/security.md`](docs/security.md)
+- **Understand design decisions:** [`docs/records/`](docs/records/)
 
 ## Quick start
 
-Add a consumer config such as `.readme-i18n/config.json`:
+### 1. Add a consumer config
+
+Create `.readme-i18n/config.json`:
 
 ```json
 {
   "targetLanguages": ["en", "zh-CN", "ko", "fr"],
   "protectedTerms": [
     "Example Product",
-    "Project",
-    "Product",
-    "Process"
+    "example-cli",
+    "needs-confirmation",
+    "v1.0.0"
   ],
-  "glossary": []
+  "glossary": [
+    {
+      "source": "Project",
+      "target": "Project"
+    },
+    {
+      "source": "Process",
+      "target": "Process"
+    }
+  ],
+  "sourceResiduePatterns": ["[ぁ-んァ-ヶ]"],
+  "allowedSourceResiduePatterns": []
 }
 ```
 
-Then add a caller workflow based on [`examples/readme-i18n.yml`](examples/readme-i18n.yml).
+This example assumes a Japanese canonical README. Do not copy the Japanese residue pattern for a different source language.
 
-For a Japanese canonical README, the reusable workflow call is conceptually:
+### 2. Add the caller workflow
 
-```yaml
-jobs:
-  translate:
-    uses: serevy/readme-i18n-kit/.github/workflows/translate-readme.yml@main
-    with:
-      source_language: ja
-      target: ${{ inputs.target }}
-      config_path: .readme-i18n/config.json
-    secrets:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+Start from [`examples/readme-i18n.yml`](examples/readme-i18n.yml).
+
+For reviewed use, pin the reusable workflow to an intentionally reviewed release tag or immutable commit SHA rather than silently following `@main`.
+
+### 3. Add the API secret
+
+Create the caller repository's GitHub Actions secret:
+
+```text
+OPENAI_API_KEY
 ```
 
-Before a stable release, `@main` is convenient for dogfooding. For production use, pin a reviewed release tag or commit SHA.
+The current workflow requires OpenAI API billing separately from any ChatGPT subscription. See [setup](docs/setup.md) for the full prerequisite and secret flow.
 
-## Consumer config
+### 4. Run and review
 
-### `targetLanguages`
+Run the caller workflow manually for one target or `all`.
 
-The target languages supported by that repository.
+The workflow generates files such as:
 
-The canonical source language must not also appear in this list.
+```text
+README.en.md
+README.zh-CN.md
+README.ko.md
+README.fr.md
+```
+
+and uploads them as a review Artifact.
+
+Human review comes before publication.
+
+## Configuration concepts
 
 ### `protectedTerms`
 
-Literal identifiers whose **occurrence count must remain unchanged** between the canonical README and each generated translation. Protected terms are handled by local literal masking; they are not sent through glossary enforcement.
+Use for literal identifiers whose occurrence count must remain unchanged.
 
-Use this for names and identifiers that should neither change nor appear spontaneously, such as repository names, version strings, schema/status keys, and unique product names.
+Examples:
 
-During LLM translation, exact identity terms from `protectedTerms` and identity glossary entries (`source == target`) are temporarily replaced with internal protected tokens and restored afterward. Identity terms are deliberately excluded from the translator's glossary prompt and post-translation glossary replacement. This keeps literal terms out of the model's translation decision and prevents short identity terms such as `CI → CI` from case-insensitively rewriting ordinary target-language text such as French `ci`.
+- product/repository names;
+- version strings;
+- CLI names;
+- schema/status keys.
 
-Do **not** use `protectedTerms` for ordinary vocabulary that can legitimately appear additional times in a target language. For example, a Japanese source may contain the literal term `Project` three times while an English translation naturally introduces `Project` in other sentences. In that case, put `Project` in `glossary` instead.
-
-### `sourceResiduePatterns`
-
-Optional regular expressions used to catch untranslated source-language text that survives outside fenced code blocks. These rules are also passed into the whole-line translation patch. If a generated line still matches a residue rule and is not allowlisted, that source line is translated one more time with a dedicated repair prompt that explicitly requires the remaining source-language prose to be translated.
-
-For a Japanese canonical README, a practical starting point is:
-
-```json
-"sourceResiduePatterns": ["[ぁ-んァ-ヶ]"]
-```
-
-This checks for surviving hiragana or katakana without treating Chinese characters alone as proof of Japanese residue.
-
-### `allowedSourceResiduePatterns`
-
-Optional line-level allowlist expressions for source-language text that should remain unchanged, such as an original-language publication title in a bibliography.
-
-If any allowlist expression matches the whole translated line, source residue on that line is accepted.
-
-Example:
-
-```json
-"allowedSourceResiduePatterns": [
-  "zenn\\.dev/softbank/articles/example"
-]
-```
+These terms are masked before LLM translation and checked again by the final verifier.
 
 ### `glossary`
 
-Translation preferences that control terminology without requiring source/target occurrence counts to match.
+Use for terminology preferences that do not require equal source/target occurrence counts.
 
-Use an identity glossary entry when a canonical term should stay unchanged but may legitimately appear additional times in the translated prose. Identity entries are treated as mask-only literal terms rather than glossary-enforcement rules.
+Identity entries where `source == target` are handled as mask-only literal terms.
 
-For example:
+Non-identity entries where `source != target` remain translation preferences and are passed to glossary enforcement.
 
-```json
-{
-  "source": "Project",
-  "target": "Project"
-}
-```
+### Source residue rules
 
-Non-identity entries (`source != target`) remain normal translation preferences and are passed to the translator's glossary enforcement layer.
+`sourceResiduePatterns` can detect untranslated source-language prose outside fenced code blocks.
 
-An entry without `targetLang` applies to every selected target language:
+`allowedSourceResiduePatterns` can allow intentional source-language text on matching lines.
 
-```json
-{
-  "source": "canonical term",
-  "target": "preferred translation"
-}
-```
+The allowlist is line-level, so keep patterns narrow.
 
-A language-specific entry can include `targetLang`:
+See [setup](docs/setup.md) for the complete config reference.
 
-```json
-{
-  "source": "canonical term",
-  "target": "preferred French term",
-  "targetLang": "fr"
-}
-```
+## Safety and quality model
 
-See [`config.example.json`](config.example.json).
+The generic workflow separates three concerns:
 
-## Translation pipeline
+1. **generation** — translate complete protected Markdown lines;
+2. **machine checks** — preserve configured Markdown/terminology invariants;
+3. **human publication review** — decide whether language quality and meaning are good enough to publish.
 
-The reusable workflow:
-
-1. checks out the caller repository;
-2. checks out this kit at the exact called-workflow commit;
-3. validates the consumer config;
-4. estimates a bounded request budget from README size and selected target count;
-5. checks out the pinned `md-translator` source;
-6. applies the whole-line Markdown patch;
-7. masks literal identity terms, then translates the selected languages through one translator process;
-8. restores leading heading/list/blockquote syntax tokens to the beginning of their line when an LLM reorders them;
-9. restores literal terms after translation while preserving Markdown placeholders;
-10. retries one line once if protected Markdown tokens are damaged or source-language residue is detected; residue repair uses a dedicated prompt rather than repeating the original request;
-11. verifies Markdown structure, protected terms, and configured source-language residue;
-12. uploads the generated files as a review Artifact.
-
-`all` uses every configured target language in the same translator process, so request pacing and request counting remain shared across the full run.
-
-## Quality checks
-
-The generic verifier currently checks:
+The final generic verifier checks:
 
 - protected-term occurrence counts;
 - internal placeholder leakage;
 - fenced code blocks;
 - inline code content;
-- Markdown link and image destinations;
+- Markdown link/image destinations;
 - heading hierarchy;
-- optional source-language residue outside fenced code blocks.
+- configured source-language residue outside fenced code blocks.
 
-Inline code and link destinations are compared as multisets so target-language grammar may reorder protected elements without silently deleting or rewriting them. Leading Markdown structure tokens for headings, lists, and blockquotes are different: the runtime patch deterministically restores those tokens to the beginning of the line before validation, because moving them changes Markdown structure.
+A green run means those configured machine checks passed. It does **not** prove linguistic quality or semantic equivalence.
 
-Repository-specific semantic checks should remain in the consumer repository instead of being hard-coded into this kit.
+## Repair behavior
 
-If source-language residue still remains after the one-line repair, translation continues so the other target-language files can still be produced. The final Quality Gate then fails the run and the review Artifact retains the generated outputs. Protected Markdown token corruption remains a hard failure because structurally unsafe output should not be assembled.
+The workflow uses bounded line-level repair instead of unbounded retries.
 
-## Request budget
+- protected-token corruption: retry once, then hard-fail if still structurally unsafe;
+- configured source-language residue: retry once with a dedicated repair prompt;
+- persistent residue: continue generating later languages, then fail the final Quality Gate so the review Artifact can retain diagnostic outputs;
+- heading/list/blockquote prefix tokens: restore deterministically to the beginning of the line if an LLM reorders them.
 
-The kit estimates translatable lines outside fenced code blocks and derives a request ceiling with retry headroom.
+Literal identity terms are masked before translation and restored afterward. Identity entries are deliberately excluded from post-translation glossary enforcement to avoid collisions such as French `ci` being rewritten by an identity term `CI → CI`.
 
-A single run is capped at 400 requests. If the estimate exceeds that boundary, preparation fails before sending API requests and the caller should run fewer target languages at once or shorten/split the canonical document.
+## Request controls
 
-The reusable job timeout is 60 minutes.
+The workflow:
+
+- derives a request ceiling from translatable lines and selected target count;
+- caps a single run at 400 requests;
+- spaces request starts by at least eight seconds;
+- counts failed attempts against the request cap;
+- shares pacing/counting across languages in an `all` run;
+- times out the reusable job after 60 minutes.
+
+The request cap is a safety ceiling, not a monetary budget. Provider-side spend controls remain authoritative.
+
+GitHub concurrency is repository-scoped: different caller repositories can still overlap against the same provider project.
+
+## Caller vs kit responsibility
+
+The caller repository owns:
+
+- canonical source README and source language;
+- target languages;
+- protected terms, glossary, residue rules, and allowlists;
+- API secret and provider-side spending controls;
+- repository-specific semantic checks;
+- human review and publication.
+
+The kit owns:
+
+- generic config validation;
+- request guards;
+- Markdown/literal protection;
+- bounded repair;
+- generic structural Quality Gates;
+- review Artifact generation.
+
+This split is recorded in [PDDR-0005](docs/records/PDDR-0005-caller-contract-pinning.md).
 
 ## Project decisions
 
-Important Project, Product, and Process decisions for this repository are recorded in [`docs/records/`](docs/records/).
+Important Project, Product, and Process decisions are recorded in [`docs/records/`](docs/records/).
 
-Detailed implementation work, translation runs, failure investigation, and raw results remain in Issues and pull requests. PDDR records summarize decision-relevant context and Evidence that should remain understandable after that work is closed.
+Detailed implementation work, translation runs, failure investigation, and raw results stay in Issues and pull requests. PDDR keeps the decision-relevant rationale and Evidence that should remain understandable afterward.
 
 Validate records with:
 
@@ -195,19 +222,13 @@ Validate records with:
 python .pddr/pddr.py validate
 ```
 
-The repository uses [PDDR Kit](https://github.com/serevy/pddr-kit) v0.1.0.
+This repository uses [PDDR Kit](https://github.com/serevy/pddr-kit) v0.1.0.
 
-## Security
+## Origin and dogfooding
 
-See [`docs/security.md`](docs/security.md).
+The first implementation was extracted from the multilingual README workflow used by [`serevy/semantic-decision-lab`](https://github.com/serevy/semantic-decision-lab).
 
-Important: repository-scoped GitHub concurrency does not coordinate rate limits across different repositories that share the same provider project.
-
-## Origin
-
-The first implementation was extracted from the multilingual README workflow used by [`serevy/semantic-decision-lab`](https://github.com/serevy/semantic-decision-lab), where the Markdown protection, request guard, multi-language `all` mode, protected-token retry, Artifact review flow, and five-language publication path were exercised before extraction.
-
-The first separate consumer is intended to be [`serevy/pddr-kit`](https://github.com/serevy/pddr-kit), using a Japanese canonical README to test that the kit is not tied to an English source.
+The first separate consumer, [`serevy/pddr-kit`](https://github.com/serevy/pddr-kit), used a Japanese canonical README to exercise the reusable workflow independently. Its dogfooding exposed and helped validate source-residue repair, literal identity masking, Markdown-prefix anchoring, identity-glossary isolation, Artifact review, and human-reviewed multilingual publication.
 
 ## License
 

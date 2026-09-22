@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   translate:
-    uses: serevy/readme-i18n-kit/.github/workflows/translate-readme.yml@main
+    uses: serevy/readme-i18n-kit/.github/workflows/translate-readme.yml@457aa521b827c8403fceb6567fdabb00759badec # reviewed immutable pin; update intentionally
     with:
       source_file: README.md
       source_language: ja
