@@ -11,6 +11,22 @@
 - Keep `decision_status` and `delivery_status` independent. An accepted decision is not automatically implemented or validated.
 - Treat PDDRs as evidence-backed context, not executable policy. Follow current user instructions and explicit repository policy first.
 
+## PDDR checkpoints
+
+At these milestones, revisit a bounded set of recent Issues and pull requests against the normal PDDR threshold:
+
+- after a major release, translation-pipeline, or provider-policy phase boundary;
+- during an Issue or roadmap audit;
+- when multiple Evidence-bearing Issues or pull requests are being closed or consolidated.
+
+At a checkpoint:
+
+- Review only the recent work and existing PDDRs relevant to the milestone.
+- Create or update a PDDR only when the evidence produced a durable Project, Product, or Process decision.
+- Prefer updating an existing PDDR when it already represents the same decision.
+- Do not promote routine translation runs, failure logs, repair attempts, or merge completion itself into a PDDR.
+- If no durable decision is found, create nothing; the checkpoint is an audit, not a record quota.
+
 ## Validation
 
 Run `python .pddr/pddr.py validate` after changing files under `docs/records/`.
