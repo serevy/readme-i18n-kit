@@ -15,4 +15,4 @@
 
 Run `python .pddr/pddr.py validate` after changing files under `docs/records/`.
 
-Until the first PDDR record is added, CI uses `--allow-empty`. Remove that flag once the repository has its first record so accidental record loss cannot pass silently.
+CI validates records without `--allow-empty` so accidental loss of all PDDR records cannot pass silently.

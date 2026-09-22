@@ -32,4 +32,4 @@ jobs:
           python-version: "3.10"
 
       - name: Validate records
-        run: python .pddr/pddr.py validate --allow-empty
+        run: python .pddr/pddr.py validate
