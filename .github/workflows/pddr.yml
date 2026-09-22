@@ -1,0 +1,35 @@
+name: Validate PDDR records
+
+on:
+  pull_request:
+    paths:
+      - ".pddr/**"
+      - "docs/records/**"
+      - "AGENTS.md"
+      - ".github/workflows/pddr.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".pddr/**"
+      - "docs/records/**"
+      - "AGENTS.md"
+      - ".github/workflows/pddr.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.10"
+
+      - name: Validate records
+        run: python .pddr/pddr.py validate --allow-empty
