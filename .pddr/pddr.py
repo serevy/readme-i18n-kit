@@ -58,7 +58,7 @@ REQUIRED_SECTIONS = {
 LIST_FIELDS = {"scope", "owners", "evidence", "related", "supersedes"}
 ID_PATTERN = re.compile(r"^PDDR-(\d{4})$")
 FILENAME_PATTERN = re.compile(r"^(PDDR-\d{4})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
-KIT_VERSION = "0.1.0"
+KIT_VERSION = "0.2.1"
 MANIFEST_SCHEMA_VERSION = 1
 MANAGED_PATHS = (
     ".pddr/pddr.py",
