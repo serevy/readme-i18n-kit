@@ -222,7 +222,9 @@ Validate records with:
 python .pddr/pddr.py validate
 ```
 
-This repository uses [PDDR Kit](https://github.com/serevy/pddr-kit) v0.1.0.
+This repository uses [PDDR Kit](https://github.com/serevy/pddr-kit) v0.2.1.
+
+It also uses the hardened optional checkpoint CI. The PR-head signal workflow is read-only, while marker writes are handled by a trusted default-branch writer. A checkpoint signal requests a bounded review; it does not require creating a PDDR, and routine translation runs, failure investigation, repair attempts, or merge completion are not promoted automatically.
 
 ## Origin and dogfooding
 
