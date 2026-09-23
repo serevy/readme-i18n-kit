@@ -1,0 +1,36 @@
+name: PDDR checkpoint
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pddr-checkpoint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  checkpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pull request head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Collect changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/pddr-changed-files.txt"
+
+      - name: Detect checkpoint signal
+        run: |
+          python .pddr/pddr_checkpoint.py \
+            --changed-files "$RUNNER_TEMP/pddr-changed-files.txt" \
+            --event-path "$GITHUB_EVENT_PATH" \
+            --summary "$GITHUB_STEP_SUMMARY"
