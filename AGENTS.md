@@ -42,3 +42,14 @@ At a checkpoint:
 Run `python .pddr/pddr.py validate` after changing files under `docs/records/`.
 
 CI validates records without `--allow-empty` so accidental loss of all PDDR records cannot pass silently.
+
+## PDDR CI authoring defaults
+
+Apply these defaults when adding or changing PDDR CI; see the [PDDR Kit adoption guide](https://github.com/serevy/pddr-kit/blob/main/docs/adoption.md) and [Kit issue #47](https://github.com/serevy/pddr-kit/issues/47).
+
+- Set an explicit job timeout. Lightweight PDDR validation, checkpoint, and marker jobs use `timeout-minutes: 5`; justify a different budget from the actual work.
+- Cancel superseded validator runs only within the same workflow and pull request. Include the ref and run ID in non-PR groups so separate main or manual runs remain independent.
+- Keep checkpoint detection read-only, including PR body and label events and complete base/head comparison. Marker writes use trusted default-branch code in the separate `workflow_run` job, without PR code or artifacts and without cancellation.
+- Preserve required-check identities, trigger/path coverage, validation flags, runtime versions, action pins, and permissions. Review those contracts before combining or splitting jobs.
+- Add caching, matrices, parallel jobs, or artifacts only when their benefit justifies the extra work. A lightweight validator may share an existing read-only job only after preserving coverage, failure behavior, and check requirements.
+- Record job counts and native execution time from normal CI in the PR; separate expected savings from measured results. These defaults retain existing project, review, and publication authority.
