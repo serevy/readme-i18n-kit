@@ -1,5 +1,7 @@
 # readme-i18n-kit
 
+[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/serevy/readme-i18n-kit?utm_source=oss&utm_medium=github&utm_campaign=serevy%2Freadme-i18n-kit&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
+
 Reusable, review-first README translation tooling for GitHub Actions.
 
 Keep one canonical Markdown README, generate one or more target-language READMEs, protect Markdown structure and literal terminology, and review the resulting Artifact before publication.
